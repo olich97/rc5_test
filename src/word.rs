@@ -27,6 +27,6 @@ impl Word for u32 {
     }
 
     fn to_le_bytes(&self) -> Vec<u8> {
-        u32::to_le_bytes(self.clone()).to_vec()
+        u32::to_le_bytes(*self).to_vec()
     }
 }
