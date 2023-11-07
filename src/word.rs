@@ -6,7 +6,6 @@ use std::{convert::TryInto, mem::size_of};
 
 /// Rappresentation of RC5 word parameter
 pub trait Word: Num + Zero + WrappingAdd + WrappingSub + PrimInt + NumCast {
-    // magic costants
     const P: Self; // Odd((e − 2)2^w)
     const Q: Self; // Odd((φ − 1)2^w)
 

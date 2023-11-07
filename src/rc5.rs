@@ -88,7 +88,7 @@ impl<W: Word> RC5<W> {
                 .wrapping_add(&self.expanded_key_table[2 * i + 1]);
         }
 
-        let mut ciphertext = W::to_le_bytes(&a); //a.to_le_bytes().as_ref());
+        let mut ciphertext = W::to_le_bytes(&a);
         ciphertext.extend_from_slice(&W::to_le_bytes(&b));
         Ok(ciphertext)
     }
