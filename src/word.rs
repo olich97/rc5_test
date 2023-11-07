@@ -1,5 +1,5 @@
 use num::{
-    traits::{FromBytes, WrappingAdd, WrappingSub},
+    traits::{WrappingAdd, WrappingSub},
     Num, NumCast, PrimInt, Zero,
 };
 use std::{convert::TryInto, mem::size_of};
@@ -9,6 +9,7 @@ pub trait Word: Num + Zero + WrappingAdd + WrappingSub + PrimInt + NumCast {
     // magic costants
     const P: Self; // Odd((e − 2)2^w)
     const Q: Self; // Odd((φ − 1)2^w)
+    // Byte size for the type, usefull for block separation of inputtext
     const SIZE_IN_BYTES: usize = size_of::<Self>();
     /// Actual w parameter, word size in bits: e.g 16, 32, 64, 128, 256
     const SIZE_IN_BITS: usize = Self::SIZE_IN_BYTES * 8;
