@@ -8,18 +8,19 @@ pub struct RC5<W> {
 
 /// RC5 Cipher
 ///
-/// This is the generic RC5 implementation with dynamic word size and ruound number parameters.
+/// This is the RC5 implementation with dynamic word size and round number parameters.
+/// The round number is specified in the constructor.
 /// The word size is calculated from a type parameter, which must implement the Word trait.
 /// The key size is derived by the length of specified key slice.
 impl<W: Word> RC5<W> {
     /// Creates a new RC5 instance with the given key and number of rounds.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `key` - The key used for encryption and decryption.
     /// * `rounds` - The number of rounds to perform during encryption and decryption.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// A new RC5 instance.
     pub fn new(key: Vec<u8>, rounds: u8) -> Self {
@@ -31,13 +32,25 @@ impl<W: Word> RC5<W> {
 
     /// Encrypts the given plaintext and returns the corresponding ciphertext.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `plaintext` - The plaintext to encrypt.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The encrypted ciphertext.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use rc5::RC5;
+    /// let key = [
+    ///   0x2B, 0xD6, 0x45, 0x9F, 0x82, 0xC5, 0xB3, 0x00, 0x95, 0x2C, 0x49, 0x10,
+    ///   0x48, 0x81, 0xFF, 0x48,
+    /// ];
+    /// let plaintext = vec![0xEA, 0x02, 0x47, 0x14, 0xAD, 0x5C, 0x4D, 0x84];
+    /// let result = RC5::<u32>::new(key, 12).encrypt(plaintext);
+    /// ```
     pub fn encrypt(&self, plaintext: Vec<u8>) -> Vec<u8> {
         // Split the plaintext into two w-bit blocks: A and B.
         // A = A + S[0];
@@ -65,13 +78,25 @@ impl<W: Word> RC5<W> {
 
     /// Decrypts the given ciphertext and returns the corresponding plaintext.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `ciphertext` - The ciphertext to decrypt.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The decrypted plaintext.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use rc5::RC5;
+    /// let key = [
+    ///   0x2B, 0xD6, 0x45, 0x9F, 0x82, 0xC5, 0xB3, 0x00, 0x95, 0x2C, 0x49, 0x10,
+    ///   0x48, 0x81, 0xFF, 0x48,
+    /// ];
+    /// let ciphertext = vec![0x11, 0xE4, 0x3B, 0x86, 0xD2, 0x31, 0xEA, 0x64];
+    /// let result = RC5::<u32>::new(key, 12).decrypt(ciphertext);
+    /// ```
     pub fn decrypt(&self, ciphertext: Vec<u8>) -> Vec<u8> {
         // Split the ciphertext into two w-bit blocks: A and B.
         let mut a = W::from_le_bytes(&ciphertext[..W::SIZE_IN_BYTES]);
