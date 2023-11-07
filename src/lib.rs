@@ -1,3 +1,4 @@
+pub mod errors;
 pub mod rc5;
 pub mod word;
 use rc5::RC5;
@@ -8,7 +9,10 @@ const ROUNDS: u8 = 12;
  *
  */
 fn encode(key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
-    RC5::<u32>::new(key, ROUNDS).encrypt(plaintext)
+    RC5::<u32>::new(key, ROUNDS)
+        .unwrap()
+        .encrypt(plaintext)
+        .unwrap()
 }
 
 /*
@@ -16,7 +20,10 @@ fn encode(key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
  *
  */
 fn decode(key: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8> {
-    RC5::<u32>::new(key, ROUNDS).decrypt(ciphertext)
+    RC5::<u32>::new(key, ROUNDS)
+        .unwrap()
+        .decrypt(ciphertext)
+        .unwrap()
 }
 
 #[cfg(test)]

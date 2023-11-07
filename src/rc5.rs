@@ -1,4 +1,4 @@
-use crate::word::Word;
+use crate::{errors::Error, word::Word};
 use std::{cmp::max, convert::TryInto};
 
 pub struct RC5<W> {
@@ -23,11 +23,16 @@ impl<W: Word> RC5<W> {
     /// ## Returns
     ///
     /// A new RC5 instance.
-    pub fn new(key: Vec<u8>, rounds: u8) -> Self {
-        Self {
-            expanded_key_table: Self::expand_key(key, rounds),
-            rounds,
+    pub fn new(key: Vec<u8>, rounds: u8) -> Result<Self, Error> {
+        // sanity checks
+        if !(!key.is_empty() && key.len() < 256) {
+            return Err(Error::InvalidKeyLength(key.len()));
         }
+
+        Ok(Self {
+            expanded_key_table: Self::expand_key(key, rounds)?,
+            rounds,
+        })
     }
 
     /// Encrypts the given plaintext and returns the corresponding ciphertext.
@@ -43,37 +48,45 @@ impl<W: Word> RC5<W> {
     /// ## Example
     ///
     /// ```
-    /// use rc5::RC5;
-    /// let key = [
+    /// use rc5_test::rc5::RC5;
+    /// let key = vec![
     ///   0x2B, 0xD6, 0x45, 0x9F, 0x82, 0xC5, 0xB3, 0x00, 0x95, 0x2C, 0x49, 0x10,
     ///   0x48, 0x81, 0xFF, 0x48,
     /// ];
     /// let plaintext = vec![0xEA, 0x02, 0x47, 0x14, 0xAD, 0x5C, 0x4D, 0x84];
-    /// let result = RC5::<u32>::new(key, 12).encrypt(plaintext);
+    /// let result = RC5::<u32>::new(key, 12).unwrap().encrypt(plaintext);
     /// ```
-    pub fn encrypt(&self, plaintext: Vec<u8>) -> Vec<u8> {
+    pub fn encrypt(&self, plaintext: Vec<u8>) -> Result<Vec<u8>, Error> {
         // Split the plaintext into two w-bit blocks: A and B.
         // A = A + S[0];
-        let mut a = W::from_le_bytes(plaintext[..W::SIZE_IN_BYTES].try_into().unwrap())
-            .wrapping_add(&self.expanded_key_table[0]);
+        let mut a = W::from_le_bytes(
+            plaintext[..W::SIZE_IN_BYTES]
+                .try_into()
+                .map_err(|_| Error::InvalidInputText)?,
+        )
+        .wrapping_add(&self.expanded_key_table[0]);
         // B = B + S[1];
-        let mut b = W::from_le_bytes(plaintext[W::SIZE_IN_BYTES..].try_into().unwrap())
-            .wrapping_add(&self.expanded_key_table[1]);
+        let mut b = W::from_le_bytes(
+            plaintext[W::SIZE_IN_BYTES..]
+                .try_into()
+                .map_err(|_| Error::InvalidInputText)?,
+        )
+        .wrapping_add(&self.expanded_key_table[1]);
         // for i = 1 to r do
         for i in 1..=self.rounds.into() {
             // A = ((A ⊕ B) < B) + S[2 ∗ i];
             a = (a ^ b)
-                .rotate_left(b.to_u32().unwrap())
+                .rotate_left(b.to_u32().ok_or(Error::InvalidInputText)?)
                 .wrapping_add(&self.expanded_key_table[2 * i]);
             // B = ((B ⊕ A) < A) + S[2 ∗ i + 1];
             b = (b ^ a)
-                .rotate_left(a.to_u32().unwrap())
+                .rotate_left(a.to_u32().ok_or(Error::InvalidInputText)?)
                 .wrapping_add(&self.expanded_key_table[2 * i + 1]);
         }
 
         let mut ciphertext = W::to_le_bytes(&a); //a.to_le_bytes().as_ref());
         ciphertext.extend_from_slice(&W::to_le_bytes(&b));
-        ciphertext
+        Ok(ciphertext)
     }
 
     /// Decrypts the given ciphertext and returns the corresponding plaintext.
@@ -89,15 +102,15 @@ impl<W: Word> RC5<W> {
     /// ## Example
     ///
     /// ```
-    /// use rc5::RC5;
-    /// let key = [
+    /// use rc5_test::rc5::RC5;
+    /// let key = vec![
     ///   0x2B, 0xD6, 0x45, 0x9F, 0x82, 0xC5, 0xB3, 0x00, 0x95, 0x2C, 0x49, 0x10,
     ///   0x48, 0x81, 0xFF, 0x48,
     /// ];
     /// let ciphertext = vec![0x11, 0xE4, 0x3B, 0x86, 0xD2, 0x31, 0xEA, 0x64];
-    /// let result = RC5::<u32>::new(key, 12).decrypt(ciphertext);
+    /// let result = RC5::<u32>::new(key, 12).unwrap().decrypt(ciphertext);
     /// ```
-    pub fn decrypt(&self, ciphertext: Vec<u8>) -> Vec<u8> {
+    pub fn decrypt(&self, ciphertext: Vec<u8>) -> Result<Vec<u8>, Error> {
         // Split the ciphertext into two w-bit blocks: A and B.
         let mut a = W::from_le_bytes(&ciphertext[..W::SIZE_IN_BYTES]);
         let mut b = W::from_le_bytes(&ciphertext[W::SIZE_IN_BYTES..]);
@@ -105,13 +118,13 @@ impl<W: Word> RC5<W> {
         for i in (1..=self.rounds.into()).rev() {
             // B = ((B − S[2 ∗ i + 1]) > A) ⊕ A;
             b = b
-            .wrapping_sub(&self.expanded_key_table[2 * i + 1])
-            .rotate_right(a.to_u32().unwrap()) // not sure if works
-            ^ a;
+                .wrapping_sub(&self.expanded_key_table[2 * i + 1])
+                .rotate_right(a.to_u32().ok_or(Error::InvalidInputText)?)
+                ^ a;
             // A = ((A − S[2 ∗ i]) > B) ⊕ B;
             a = a
                 .wrapping_sub(&self.expanded_key_table[2 * i])
-                .rotate_right(b.to_u32().unwrap())
+                .rotate_right(b.to_u32().ok_or(Error::InvalidInputText)?)
                 ^ b;
         }
         // B = B − S[1];
@@ -121,14 +134,14 @@ impl<W: Word> RC5<W> {
 
         let mut plaintext = W::to_le_bytes(&a);
         plaintext.extend_from_slice(&W::to_le_bytes(&b));
-        plaintext
+        Ok(plaintext)
     }
 
     /*
      * The key-expansion routine: expands the user's secret key K to fill the expanded key array S
      * so that S resembles an array of t = 2(r+1) random binary words defined by K
      */
-    fn expand_key(key: Vec<u8>, rounds: u8) -> Vec<W> {
+    fn expand_key(key: Vec<u8>, rounds: u8) -> Result<Vec<W>, Error> {
         // Init expanded key array with size t = 2(r+1)
         let mut expanded_key_table: Vec<W> = vec![W::zero(); 2 * (rounds as usize + 1)];
 
@@ -143,7 +156,7 @@ impl<W: Word> RC5<W> {
             // L[i/u] = (L[i/u] <<< 8) + K[i]
             words[word_index] = words[word_index]
                 .rotate_left(8)
-                .wrapping_add(&W::from(key[i]).expect("minimum word size is 8"));
+                .wrapping_add(&W::from(key[i]).ok_or(Error::InvalidKeyByte(i))?);
         }
 
         // Step 2: Initializing the Array S
@@ -182,6 +195,6 @@ impl<W: Word> RC5<W> {
             j = (j + 1) % word_count;
         }
 
-        expanded_key_table
+        Ok(expanded_key_table)
     }
 }
