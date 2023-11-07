@@ -74,13 +74,17 @@ impl<W: Word> RC5<W> {
         .wrapping_add(&self.expanded_key_table[1]);
         // for i = 1 to r do
         for i in 1..=self.rounds.into() {
+            // need to mod it, because of overflow for words grather then 32 bits
+            let rotation_b = b.to_u128().ok_or(Error::InvalidCast)? % W::SIZE_IN_BITS as u128;
             // A = ((A ⊕ B) < B) + S[2 ∗ i];
             a = (a ^ b)
-                .rotate_left(b.to_u32().ok_or(Error::InvalidInputText)?)
+                .rotate_left(rotation_b as u32)
                 .wrapping_add(&self.expanded_key_table[2 * i]);
+            //
+            let rotation_a = a.to_u128().ok_or(Error::InvalidCast)? % W::SIZE_IN_BITS as u128;
             // B = ((B ⊕ A) < A) + S[2 ∗ i + 1];
             b = (b ^ a)
-                .rotate_left(a.to_u32().ok_or(Error::InvalidInputText)?)
+                .rotate_left(rotation_a as u32)
                 .wrapping_add(&self.expanded_key_table[2 * i + 1]);
         }
 
@@ -116,15 +120,19 @@ impl<W: Word> RC5<W> {
         let mut b = W::from_le_bytes(&ciphertext[W::SIZE_IN_BYTES..]);
         // for i=r downto 1 do
         for i in (1..=self.rounds.into()).rev() {
+            // need to mod it, because of overflow for words grather then 32 bits
+            let rotation_b = a.to_u128().ok_or(Error::InvalidCast)? % W::SIZE_IN_BITS as u128;
             // B = ((B − S[2 ∗ i + 1]) > A) ⊕ A;
             b = b
                 .wrapping_sub(&self.expanded_key_table[2 * i + 1])
-                .rotate_right(a.to_u32().ok_or(Error::InvalidInputText)?)
+                .rotate_right(rotation_b as u32)
                 ^ a;
+
+            let rotation_a = b.to_u128().ok_or(Error::InvalidCast)? % W::SIZE_IN_BITS as u128;
             // A = ((A − S[2 ∗ i]) > B) ⊕ B;
             a = a
                 .wrapping_sub(&self.expanded_key_table[2 * i])
-                .rotate_right(b.to_u32().ok_or(Error::InvalidInputText)?)
+                .rotate_right(rotation_a as u32)
                 ^ b;
         }
         // B = B − S[1];

@@ -20,8 +20,8 @@ pub trait Word: Num + Zero + WrappingAdd + WrappingSub + PrimInt + NumCast {
 }
 
 impl Word for u32 {
-    const P: Self = 0xb7e15163;
-    const Q: Self = 0x9e3779b9;
+    const P: Self = 0xB7E15163;
+    const Q: Self = 0x9E3779B9;
 
     fn from_le_bytes(bytes: &[u8]) -> Self {
         // TODO: handle error?
@@ -30,5 +30,32 @@ impl Word for u32 {
 
     fn to_le_bytes(&self) -> Vec<u8> {
         u32::to_le_bytes(*self).to_vec()
+    }
+}
+
+impl Word for u64 {
+    const P: Self = 0xB7E151628AED2A6B;
+    const Q: Self = 0x9E3779B97F4A7C15;
+
+    fn from_le_bytes(bytes: &[u8]) -> Self {
+        println!("bytes: {:?}", Self::SIZE_IN_BYTES);
+        Self::from_le_bytes(bytes.try_into().unwrap())
+    }
+
+    fn to_le_bytes(&self) -> Vec<u8> {
+        u64::to_le_bytes(*self).to_vec()
+    }
+}
+
+impl Word for u128 {
+    const P: Self = 0xB7E151628AED2A6ABF7158809CF4F3C7;
+    const Q: Self = 0x9E3779B97F4A7C15F39CC0605CEDC835;
+
+    fn from_le_bytes(bytes: &[u8]) -> Self {
+        Self::from_le_bytes(bytes.try_into().unwrap())
+    }
+
+    fn to_le_bytes(&self) -> Vec<u8> {
+        u128::to_le_bytes(*self).to_vec()
     }
 }

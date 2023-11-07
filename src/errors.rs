@@ -8,4 +8,6 @@ pub enum Error {
     InvalidKeyByte(usize),
     #[error("Invalid input text")]
     InvalidInputText,
+    #[error("Invalid conversion between types")]
+    InvalidCast,
 }
